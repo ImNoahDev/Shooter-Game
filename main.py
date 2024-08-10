@@ -8,12 +8,23 @@ pygame.init()
 # Initialize score and lives
 score = 0
 lives = 3
+start_time = pygame.time.get_ticks()
 
+# Game States
+START_SCREEN = 0
+PLAYING = 1
+PAUSED = 2
+GAME_OVER = 3
+WIN = 4
+
+# Initial game state
+game_state = START_SCREEN
 
 # Main loop flag
 running = True
 
 # Constants
+FULLSCREEN = pygame.FULLSCREEN
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 FPS = 60
@@ -22,9 +33,24 @@ FPS = 60
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
-# Set up the game window
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Shooter Game")
+# Fullscreen state
+fullscreen = False
+
+# Function to set the screen mode
+def set_screen_mode():
+    global screen, fullscreen
+    if fullscreen:
+        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), FULLSCREEN)
+    else:
+        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    
+    # Center the window on the screen
+    os.environ['SDL_VIDEO_CENTERED'] = '1'
+    
+    pygame.display.set_caption("Shooter Game")
+
+# Initialize screen
+set_screen_mode()
 
 # Load assets
 def load_image(name):
@@ -33,6 +59,7 @@ def load_image(name):
 
 player_img = load_image('player.png')
 alien_img = load_image('alien.png')
+alien_img = pygame.transform.scale(alien_img, (65, 65))
 bullet_img = load_image('bullet.png')
 
 # Load sounds
@@ -120,15 +147,15 @@ class Alien(pygame.sprite.Sprite):
         self.rect.x += self.speedx
         # Change direction and move down if it hits the screen edge
         if self.rect.right > SCREEN_WIDTH or self.rect.left < 0:
-            self.speedx *= -1
-            self.rect.y += 10
+            self.speedx *= -1.3
+            self.rect.y += 30
 
 # Function to create a fleet of aliens
 def create_fleet():
     alien_rows = 5
     alien_cols = 10
     alien_spacing_x = 60
-    alien_spacing_y = 50
+    alien_spacing_y = 60
     fleet = pygame.sprite.Group()
 
     for row in range(alien_rows):
@@ -148,7 +175,6 @@ aliens = create_fleet()
 # Create player instance
 player = Player()
 all_sprites.add(player)
-
 
 # Collision detection and game logic
 def handle_collisions():
@@ -180,42 +206,158 @@ def game_over():
     running = False
 
 def you_win():
-    global running
-    draw_text(screen, "YOU WIN!", 64, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-    pygame.display.flip()
-    pygame.time.wait(2000)  # Wait for 2 seconds
-    running = False
+    global running, game_state, start_time
 
-    # Function to draw the score and lives on the screen
+    # Clear all sprites
+    all_sprites.empty()
+    aliens.empty()
+    bullets.empty()
+
+    # Calculate elapsed time
+    elapsed_time = (pygame.time.get_ticks() - start_time) // 1000
+
+    # Update the display
+    screen.fill(BLACK)
+    pygame.display.flip()
+
+    # Wait for 1 second
+    pygame.time.wait(150)
+
+    # Draw win screen with statistics
+    screen.fill(BLACK)
+    draw_text(screen, "YOU WIN!", 64, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 3)
+    draw_text(screen, f"Score: {score}", 36, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    draw_text(screen, f"Time: {elapsed_time} seconds", 36, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 1.5)
+    draw_text(screen, "Press ENTER to Restart", 36, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 1.2)
+    pygame.display.flip()
+
+    game_state = WIN
+
 def draw_score_and_lives(surface):
     draw_text(surface, f"Score: {score}", 24, SCREEN_WIDTH - 100, 10)
     draw_text(surface, f"Lives: {lives}", 24, 100, 10)
 
-# Main game loop
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+def draw_timer(surface):
+    elapsed_time = (pygame.time.get_ticks() - start_time) // 1000
+    draw_text(surface, f"Time: {elapsed_time} seconds", 24, SCREEN_WIDTH // 2, 10)
 
-    # Update all sprites
-    all_sprites.update()
-
-    # Handle collisions
-    handle_collisions()
-
-    # Clear the screen
+def show_start_screen():
     screen.fill(BLACK)
-
-    # Draw all sprites
-    all_sprites.draw(screen)
-
-    # Draw score and lives
-    draw_score_and_lives(screen)
-
-    # Update the display
+    draw_text(screen, "Shooter Game", 64, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4)
+    draw_text(screen, "Press ENTER to Start", 36, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    draw_text(screen, "Press F to Toggle Fullscreen", 36, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 1.5)
     pygame.display.flip()
 
-    # Cap the frame rate
-    clock.tick(FPS)
+def show_game_over_screen():
+    screen.fill(BLACK)
+    draw_text(screen, "GAME OVER", 64, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 3)
+    draw_text(screen, f"Score: {score}", 36, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    draw_text(screen, "Press ENTER to Restart", 36, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 1.5)
+    pygame.display.flip()
+
+def show_win_screen():
+    screen.fill(BLACK)
+    draw_text(screen, "YOU WIN!", 64, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 3)
+    draw_text(screen, f"Score: {score}", 36, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    draw_text(screen, "Press ENTER to Restart", 36, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 1.2)
+    pygame.display.flip()
+
+def show_pause_screen():
+    screen.fill(BLACK)
+    draw_text(screen, "PAUSED", 64, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 3)
+    draw_text(screen, "Press ESC to Resume", 36, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    pygame.display.flip()
+
+# Main game loop
+while running:
+    if game_state == START_SCREEN:
+        show_start_screen()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:  # Press ENTER to start the game
+                    game_state = PLAYING
+                elif event.key == pygame.K_f:  # Press F to toggle fullscreen
+                    fullscreen = not fullscreen
+                    set_screen_mode()
+
+    elif game_state == PLAYING:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:  # Press SPACE to shoot
+                    player.shoot()
+                elif event.key == pygame.K_f:  # Press F to toggle fullscreen
+                    fullscreen = not fullscreen
+                    set_screen_mode()
+                elif event.key == pygame.K_ESCAPE:  # Press ESC to pause
+                    game_state = PAUSED
+
+        # Update all sprites
+        all_sprites.update()
+
+        # Handle collisions
+        handle_collisions()
+
+        # Clear the screen
+        screen.fill(BLACK)
+
+        # Draw all sprites
+        all_sprites.draw(screen)
+
+        # Draw score, lives, and timer
+        draw_score_and_lives(screen)
+        draw_timer(screen)
+
+        # Update the display
+        pygame.display.flip()
+
+        # Cap the frame rate
+        clock.tick(FPS)
+
+    elif game_state == PAUSED:
+        show_pause_screen()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:  # Press ESC to resume
+                    game_state = PLAYING
+
+    elif game_state == GAME_OVER:
+        show_game_over_screen()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:  # Press ENTER to restart the game
+                    # Reset game state
+                    score = 0
+                    lives = 3
+                    start_time = pygame.time.get_ticks()  # Reset start time
+                    all_sprites.empty()
+                    aliens = create_fleet()
+                    player = Player()
+                    all_sprites.add(player)
+                    game_state = PLAYING
+
+    elif game_state == WIN:
+        show_win_screen()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:  # Press ENTER to restart the game
+                    # Reset game state
+                    score = 0
+                    lives = 3
+                    start_time = pygame.time.get_ticks()  # Reset start time
+                    all_sprites.empty()
+                    aliens = create_fleet()
+                    player = Player()
+                    all_sprites.add(player)
+                    game_state = PLAYING
 
 pygame.quit()
