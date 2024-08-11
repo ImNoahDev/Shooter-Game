@@ -58,10 +58,11 @@ def load_image(name):
     return pygame.image.load(path).convert_alpha()
 
 player_img = load_image('player.png')
+player_img = pygame.transform.scale(player_img, (65, 65))
 alien_img = load_image('alien.png')
 alien_img = pygame.transform.scale(alien_img, (65, 65))
 bullet_img = load_image('bullet.png')
-
+bullet_img = pygame.transform.scale(bullet_img, (65, 65))
 # Load sounds
 def load_sound(name):
     path = os.path.join('assets', name)
