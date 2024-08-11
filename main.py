@@ -61,8 +61,11 @@ player_img = load_image('player.png')
 player_img = pygame.transform.scale(player_img, (65, 65))
 alien_img = load_image('alien.png')
 alien_img = pygame.transform.scale(alien_img, (65, 65))
+alien2_img = load_image('alien2.png')
+alien2_img = pygame.transform.scale(alien2_img, (65, 65))
 bullet_img = load_image('bullet.png')
 bullet_img = pygame.transform.scale(bullet_img, (65, 65))
+
 # Load sounds
 def load_sound(name):
     path = os.path.join('assets', name)
@@ -134,11 +137,17 @@ class Bullet(pygame.sprite.Sprite):
         if self.rect.bottom < 0:
             self.kill()
 
-# Alien class
+# Alien class (for both types)
 class Alien(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, alien_type=1):
         super().__init__()
-        self.image = alien_img
+        if alien_type == 1:
+            self.image = alien_img
+            self.health = 1
+        else:
+            self.image = alien2_img
+            self.health = 5
+        self.alien_type = alien_type
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -151,6 +160,11 @@ class Alien(pygame.sprite.Sprite):
             self.speedx *= -1.3
             self.rect.y += 30
 
+    def take_damage(self):
+        self.health -= 1
+        if self.health <= 0:
+            self.kill()
+
 # Function to create a fleet of aliens
 def create_fleet():
     alien_rows = 5
@@ -161,9 +175,11 @@ def create_fleet():
 
     for row in range(alien_rows):
         for col in range(alien_cols):
+            alien_type = 1 if row % 2 == 0 else 2
             alien = Alien(
                 x=col * alien_spacing_x + 50,
-                y=row * alien_spacing_y + 80
+                y=row * alien_spacing_y + 80,
+                alien_type=alien_type
             )
             all_sprites.add(alien)
             fleet.add(alien)
@@ -182,10 +198,13 @@ def handle_collisions():
     global score, lives
 
     # Check for bullet-alien collisions
-    hits = pygame.sprite.groupcollide(bullets, aliens, True, True)
+    hits = pygame.sprite.groupcollide(bullets, aliens, True, False)
     for hit in hits:
-        score += 10
-        explosion_sound.play()
+        for alien in hits[hit]:
+            alien.take_damage()
+            if alien.health <= 0:
+                score += 10 if alien.alien_type == 1 else 50
+                explosion_sound.play()
 
     # Check for alien-player collisions
     collisions = pygame.sprite.spritecollide(player, aliens, True)
